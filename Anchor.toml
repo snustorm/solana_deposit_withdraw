@@ -4,6 +4,9 @@
 resolution = true
 skip-lint = false
 
+[programs.devnet]
+deposit_withdraw = "2tcNuRhcHymgmbjbRPHBkDgXjEHg3W6Dv5ehw83126xw"
+
 [programs.localnet]
 deposit_withdraw = "CRzTxSDcpjSqimnSSi6jGhX3ZeKBJAUwUyfnK5ikWPz2"
 

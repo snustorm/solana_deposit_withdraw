@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("CRzTxSDcpjSqimnSSi6jGhX3ZeKBJAUwUyfnK5ikWPz2");
+declare_id!("2tcNuRhcHymgmbjbRPHBkDgXjEHg3W6Dv5ehw83126xw");
 
 use state::*;
 mod state;
@@ -16,15 +16,19 @@ pub mod deposit_withdraw {
     use super::*;
 
      pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        
         if ctx.accounts.bank.initialize {
-            return Err(CustomError::BankAlreadyInitialized.into());
+            //return Err(CustomError::BankAlreadyInitialized.into());
+            ctx.accounts.bank.bank_balance += amount;
+            msg!("Bank already initialized, just do deposit");
+        } else {
+            *ctx.accounts.bank = Bank {
+                authority: ctx.accounts.depositor.key(),
+                bank_balance: ctx.accounts.bank.bank_balance + amount,
+                bump: ctx.bumps.bank,
+                initialize: true,
+            };
         }
-        *ctx.accounts.bank = Bank {
-            authority: ctx.accounts.depositor.key(),
-            bank_balance: ctx.accounts.bank.bank_balance + amount,
-            bump: ctx.bumps.bank,
-            initialize: true,
-        };
         msg!("{:#?}", ctx.accounts.bank);
 
         transfer(
